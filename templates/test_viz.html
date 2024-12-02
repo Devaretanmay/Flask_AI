@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visualization Test Page</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .visualization {
+            min-height: 500px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .metadata {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Visualization Test Page</h1>
+        
+        <div class="controls">
+            <h3>Select Visualization Type</h3>
+            <button onclick="loadVisualization('time')">Time Series</button>
+            <button onclick="loadVisualization('comparison')">Comparison</button>
+            <button onclick="loadVisualization('distribution')">Distribution</button>
+        </div>
+
+        <div class="metadata">
+            <h3>Metadata</h3>
+            <pre id="metadata">Select a visualization type to see metadata...</pre>
+        </div>
+
+        <div class="visualization" id="plot"></div>
+    </div>
+
+    <script>
+        function loadVisualization(type) {
+            // First get the test data
+            fetch(`/api/v0/test_visualizations?type=${type}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('metadata').textContent = `Error: ${data.error}`;
+                        return;
+                    }
+                    
+                    // Display metadata
+                    document.getElementById('metadata').textContent = JSON.stringify(data, null, 2);
+                    
+                    // Now get the visualization
+                    return fetch(`/api/v0/generate_plotly_figure?id=${data.id}`);
+                })
+                .then(response => response.json())
+                .then(figData => {
+                    if (figData.error) {
+                        document.getElementById('plot').textContent = `Error: ${figData.error}`;
+                        return;
+                    }
+                    
+                    Plotly.newPlot('plot', figData.data, figData.layout);
+                })
+                .catch(error => {
+                    document.getElementById('metadata').textContent = `Error: ${error}`;
+                });
+        }
+
+        // Load time series visualization by default
+        document.addEventListener('DOMContentLoaded', () => {
+            loadVisualization('time');
+        });
+    </script>
+</body>
+</html> 

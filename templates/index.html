@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Energy Analytics Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-primary: #007bff;
+            --accent-hover: #0056b3;
+            --border-color: #dee2e6;
+            --hover-bg: #e9ecef;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 300px;
+            background-color: var(--bg-secondary);
+            padding: 20px;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: var(--bg-primary);
+        }
+
+        .query-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .query-section h2 {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 500;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .query-button {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            border-radius: 4px;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .query-button:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .recommended-query {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px 15px;
+            border-radius: 4px;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .recommended-query:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .chat-container {
+            position: fixed;
+            bottom: 0;
+            left: 300px;
+            right: 0;
+            background-color: var(--bg-secondary);
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 60px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px 15px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .chat-button {
+            padding: 10px 20px;
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .chat-button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .query-results {
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .visualization {
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 400px;
+            border: 1px solid var(--border-color);
+        }
+
+        #plot {
+            width: 100%;
+            height: 500px;
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+        
+        .data-table th {
+            background-color: var(--bg-tertiary);
+            font-weight: 500;
+        }
+        
+        .data-table tr:hover {
+            background-color: var(--hover-bg);
+        }
+
+        pre {
+            background-color: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            margin: 10px 0;
+        }
+
+        h4 {
+            color: var(--text-primary);
+            margin: 20px 0 10px;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="query-section">
+                <h2>Pre-written Questions</h2>
+                <button class="query-button" data-query="Daily Energy Consumption">Daily Energy Consumption</button>
+                <button class="query-button" data-query="Weekday vs Weekend Analysis">Weekday vs Weekend Analysis</button>
+                <button class="query-button" data-query="Peak Hours Analysis">Peak Hours Analysis</button>
+            </div>
+            
+            <div class="query-section">
+                <h2>Recommended Questions</h2>
+                <div id="recommendedQueries">
+                    <!-- AI-generated recommendations will be inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="query-results">
+                <h3>Query Results</h3>
+                <pre id="metadata">Ask a question to see the results...</pre>
+            </div>
+            
+            <div class="visualization" id="plot"></div>
+            
+            <div class="loading">Processing your query...</div>
+        </div>
+    </div>
+    
+    <div class="chat-container">
+        <input type="text" id="queryInput" class="chat-input" placeholder="Ask a question about your energy data...">
+        <button id="submitQuery" class="chat-button">Ask</button>
+    </div>
+
+    <script>
+        // Configure default Plotly theme for dark mode
+        const darkConfig = {
+            template: 'plotly_dark',
+            plot_bgcolor: 'rgba(32, 32, 32, 0.8)',
+            paper_bgcolor: 'rgba(32, 32, 32, 0.8)',
+            font: { color: '#ffffff' },
+            margin: { t: 50, l: 50, r: 50, b: 50 },
+            showlegend: true,
+            xaxis: {
+                gridcolor: 'rgba(128, 128, 128, 0.2)',
+                zerolinecolor: 'rgba(128, 128, 128, 0.2)'
+            },
+            yaxis: {
+                gridcolor: 'rgba(128, 128, 128, 0.2)',
+                zerolinecolor: 'rgba(128, 128, 128, 0.2)'
+            }
+        };
+
+        function createDataTable(data) {
+            const metadata = document.getElementById('metadata');
+            metadata.innerHTML = '';
+            
+            // Add SQL query
+            const sqlHeader = document.createElement('h4');
+            sqlHeader.textContent = 'SQL Query:';
+            metadata.appendChild(sqlHeader);
+            
+            const sqlPre = document.createElement('pre');
+            sqlPre.textContent = data.sql;
+            metadata.appendChild(sqlPre);
+            
+            // Add data table
+            const tableHeader = document.createElement('h4');
+            tableHeader.textContent = 'Results:';
+            metadata.appendChild(tableHeader);
+            
+            const table = document.createElement('table');
+            table.className = 'data-table';
+            
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            data.data.columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col.title;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create body
+            const tbody = document.createElement('tbody');
+            data.data.records.forEach(record => {
+                const row = document.createElement('tr');
+                data.data.columns.forEach(col => {
+                    const td = document.createElement('td');
+                    td.textContent = record[col.field];
+                    row.appendChild(td);
+                });
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            
+            metadata.appendChild(table);
+        }
+
+        function updateVisualization(id) {
+            const plotDiv = document.getElementById('plot');
+            plotDiv.innerHTML = ''; // Clear previous plot
+            
+            fetch(`/api/v0/generate_plotly_figure?id=${id}`)
+                .then(response => response.json())
+                .then(figure => {
+                    if (!figure.data || !figure.layout) {
+                        throw new Error('Invalid figure data received');
+                    }
+                    
+                    // Deep merge layout with dark theme config
+                    const layout = {
+                        ...darkConfig,
+                        ...figure.layout,
+                        xaxis: { ...darkConfig.xaxis, ...figure.layout.xaxis },
+                        yaxis: { ...darkConfig.yaxis, ...figure.layout.yaxis }
+                    };
+                    
+                    // Create new plot
+                    return Plotly.newPlot('plot', figure.data, layout, {
+                        responsive: true,
+                        displayModeBar: true
+                    });
+                })
+                .catch(error => {
+                    console.error('Visualization error:', error);
+                    plotDiv.innerHTML = `
+                        <div class="error">
+                            Error generating visualization: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+
+        // Function to execute query
+        function executeQuery(query, isPredefined = false) {
+            const loadingDiv = document.querySelector('.loading');
+            const metadataDiv = document.getElementById('metadata');
+            const plotDiv = document.getElementById('plot');
+            
+            // Clear previous results and show loading
+            loadingDiv.style.display = 'block';
+            metadataDiv.innerHTML = '';
+            plotDiv.innerHTML = '';
+            
+            fetch('/api/v0/execute_query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: query,
+                    is_predefined: isPredefined
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to execute query');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                createDataTable(data);
+                updateVisualization(data.id);
+            })
+            .catch(error => {
+                metadataDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                plotDiv.innerHTML = '';
+            })
+            .finally(() => {
+                loadingDiv.style.display = 'none';
+            });
+        }
+
+        // Load recommended queries
+        async function loadRecommendedQueries() {
+            try {
+                const response = await fetch('/api/v0/get_recommended_queries');
+                const data = await response.json();
+                
+                const container = document.getElementById('recommendedQueries');
+                container.innerHTML = '';
+                
+                data.queries.forEach(query => {
+                    const button = document.createElement('button');
+                    button.className = 'recommended-query';
+                    button.textContent = query.query;
+                    button.title = query.description;
+                    button.onclick = () => executeQuery(query.query);
+                    container.appendChild(button);
+                });
+            } catch (error) {
+                console.error('Error loading recommended queries:', error);
+            }
+        }
+
+        // Event listeners
+        document.querySelectorAll('.query-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const query = button.getAttribute('data-query');
+                document.getElementById('queryInput').value = query;
+                executeQuery(query, true);  // true for predefined queries
+            });
+        });
+
+        document.getElementById('submitQuery').addEventListener('click', () => {
+            const query = document.getElementById('queryInput').value.trim();
+            if (query) {
+                executeQuery(query);
+                document.getElementById('queryInput').value = '';
+            }
+        });
+
+        document.getElementById('queryInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const query = e.target.value.trim();
+                if (query) {
+                    executeQuery(query);
+                    e.target.value = '';
+                }
+            }
+        });
+
+        // Load recommended queries on page load
+        loadRecommendedQueries();
+    </script>
+</body>
+</html> 
